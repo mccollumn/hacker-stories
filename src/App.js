@@ -80,12 +80,19 @@ const StyledInput = styled.input`
 const API_ENDPOINT = "https://hn.algolia.com/api/v1/search?query=";
 
 const useSemiPersistentState = (key, initialState) => {
+  const isMounted = React.useRef(false);
+
   const [value, setValue] = React.useState(
     localStorage.getItem(key) || initialState
   );
 
   React.useEffect(() => {
-    localStorage.setItem(key, value);
+    if (!isMounted) {
+      isMounted.current = true;
+    } else {
+      console.log("useSemiPersistentState -> useEffect");
+      localStorage.setItem(key, value);
+    }
   }, [value, key]);
 
   return [value, setValue];
@@ -114,6 +121,12 @@ const storiesReducer = (state, action) => {
     default:
       throw new Error();
   }
+};
+
+const getSumComments = (stories) => {
+  console.log("getSumComments");
+
+  return stories.data.reduce((result, value) => result + value.num_comments, 0);
 };
 
 const App = () => {
@@ -146,12 +159,12 @@ const App = () => {
     handleFetchStories();
   }, [handleFetchStories]);
 
-  const handleRemoveStory = (item) => {
+  const handleRemoveStory = React.useCallback((item) => {
     dispatchStories({
       type: "REMOVE_STORY",
       payload: item,
     });
-  };
+  }, []);
 
   const handleSearchInput = (event) => {
     setSearchTerm(event.target.value);
@@ -162,9 +175,15 @@ const App = () => {
     event.preventDefault();
   };
 
+  console.log("App");
+
+  const sumComments = React.useMemo(() => getSumComments(stories), [stories]);
+
   return (
     <StyledContainer>
-      <StyledHeadlinePrimary>My Hacker Stories</StyledHeadlinePrimary>
+      <StyledHeadlinePrimary>
+        My Hacker Stories with {sumComments} comments
+      </StyledHeadlinePrimary>
 
       <SearchForm
         searchTerm={searchTerm}
@@ -214,25 +233,29 @@ const InputWithLabel = ({
   );
 };
 
-const List = ({ list, onRemoveItem }) =>
+const List = React.memo(({ list, onRemoveItem }) =>
   list.map((item) => (
     <Item key={item.objectID} item={item} onRemoveItem={onRemoveItem} />
-  ));
+  ))
+);
 
-const Item = ({ item, onRemoveItem }) => (
-  <StyledItem>
-    <StyledColumn width="40%">
-      <a href={item.url}>{item.title}</a>
-    </StyledColumn>
-    <StyledColumn width="40%">{item.author}</StyledColumn>
-    <StyledColumn width="40%">{item.num_comments}</StyledColumn>
-    <StyledColumn width="40%">{item.points}</StyledColumn>
-    <StyledColumn width="40%">
-      <StyledButtonSmall type="button" onClick={() => onRemoveItem(item)}>
-        <Check height="18px" width="18px" />
-      </StyledButtonSmall>
-    </StyledColumn>
-  </StyledItem>
+const Item = React.memo(
+  ({ item, onRemoveItem }) =>
+    console.log("List") || (
+      <StyledItem>
+        <StyledColumn width="40%">
+          <a href={item.url}>{item.title}</a>
+        </StyledColumn>
+        <StyledColumn width="40%">{item.author}</StyledColumn>
+        <StyledColumn width="40%">{item.num_comments}</StyledColumn>
+        <StyledColumn width="40%">{item.points}</StyledColumn>
+        <StyledColumn width="40%">
+          <StyledButtonSmall type="button" onClick={() => onRemoveItem(item)}>
+            <Check height="18px" width="18px" />
+          </StyledButtonSmall>
+        </StyledColumn>
+      </StyledItem>
+    )
 );
 
 const SearchForm = ({ searchTerm, onSearchInput, onSearchSubmit }) => (
