@@ -1,98 +1,15 @@
 import React from "react";
 import axios from "axios";
-import styled from "styled-components";
-import { ReactComponent as Check } from "./check.svg";
-
-const StyledContainer = styled.div`
-  height: 100vw;
-  padding: 20px;
-  background: #83a4d4; /* fallback for old browsers */
-  background: linear-gradient(to left, #b6fbff, #83a4d4);
-  color: #171212;
-`;
-
-const StyledHeadlinePrimary = styled.h1`
-  font-size: 48px;
-  font-weight: 300;
-  letter-spacing: 2px;
-`;
-
-const StyledItem = styled.div`
-  display: flex;
-  align-items: center;
-  padding-bottom: 5px;
-`;
-
-const StyledColumn = styled.span`
-  padding: 0 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  a {
-    color: inherit;
-  }
-
-  width: ${(props) => props.width};
-`;
-
-const StyledButton = styled.button`
-  background: transparent;
-  border: 1px solid #171212;
-  padding: 5px;
-  cursor: pointer;
-  transition: all 0.1s ease-in;
-
-  &:hover {
-    background: #171212;
-    color: #ffffff;
-  }
-`;
-
-const StyledButtonSmall = styled(StyledButton)`
-  padding: 5px;
-`;
-
-const StyledButtonLarge = styled(StyledButton)`
-  padding: 10px;
-`;
-
-const StyledSearchForm = styled.form`
-  padding: 10px 0 20px 0;
-  display: flex;
-  align-items: baseline;
-`;
-
-const StyledLabel = styled.label`
-  border-top: 1px solid #171212;
-  border-left: 1px solid #171212;
-  padding-left: 5px;
-  font-size: 24px;
-`;
-
-const StyledInput = styled.input`
-  border: none;
-  border-bottom: 1px solid #171212;
-  background-color: transparent;
-  font-size: 24px;
-`;
 
 const API_ENDPOINT = "https://hn.algolia.com/api/v1/search?query=";
 
 const useSemiPersistentState = (key, initialState) => {
-  const isMounted = React.useRef(false);
-
   const [value, setValue] = React.useState(
     localStorage.getItem(key) || initialState
   );
 
   React.useEffect(() => {
-    if (!isMounted) {
-      isMounted.current = true;
-    } else {
-      console.log("useSemiPersistentState -> useEffect");
-      localStorage.setItem(key, value);
-    }
+    localStorage.setItem(key, value);
   }, [value, key]);
 
   return [value, setValue];
@@ -101,7 +18,11 @@ const useSemiPersistentState = (key, initialState) => {
 const storiesReducer = (state, action) => {
   switch (action.type) {
     case "STORIES_FETCH_INIT":
-      return { ...state, isLoading: true, isError: false };
+      return {
+        ...state,
+        isLoading: true,
+        isError: false,
+      };
     case "STORIES_FETCH_SUCCESS":
       return {
         ...state,
@@ -110,7 +31,11 @@ const storiesReducer = (state, action) => {
         data: action.payload,
       };
     case "STORIES_FETCH_FAILURE":
-      return { ...state, isLoading: false, isError: true };
+      return {
+        ...state,
+        isLoading: false,
+        isError: true,
+      };
     case "REMOVE_STORY":
       return {
         ...state,
@@ -121,12 +46,6 @@ const storiesReducer = (state, action) => {
     default:
       throw new Error();
   }
-};
-
-const getSumComments = (stories) => {
-  console.log("getSumComments");
-
-  return stories.data.reduce((result, value) => result + value.num_comments, 0);
 };
 
 const App = () => {
@@ -151,7 +70,7 @@ const App = () => {
         payload: result.data.hits,
       });
     } catch {
-      dispatchStories({ type: "STOREIS_FETCH_FAILURE" });
+      dispatchStories({ type: "STORIES_FETCH_FAILURE" });
     }
   }, [url]);
 
@@ -159,12 +78,12 @@ const App = () => {
     handleFetchStories();
   }, [handleFetchStories]);
 
-  const handleRemoveStory = React.useCallback((item) => {
+  const handleRemoveStory = (item) => {
     dispatchStories({
       type: "REMOVE_STORY",
       payload: item,
     });
-  }, []);
+  };
 
   const handleSearchInput = (event) => {
     setSearchTerm(event.target.value);
@@ -172,18 +91,13 @@ const App = () => {
 
   const handleSearchSubmit = (event) => {
     setUrl(`${API_ENDPOINT}${searchTerm}`);
+
     event.preventDefault();
   };
 
-  console.log("App");
-
-  const sumComments = React.useMemo(() => getSumComments(stories), [stories]);
-
   return (
-    <StyledContainer>
-      <StyledHeadlinePrimary>
-        My Hacker Stories with {sumComments} comments
-      </StyledHeadlinePrimary>
+    <div>
+      <h1>My Hacker Stories</h1>
 
       <SearchForm
         searchTerm={searchTerm}
@@ -191,16 +105,35 @@ const App = () => {
         onSearchSubmit={handleSearchSubmit}
       />
 
-      {stories.isError && <p>Something went wrong...</p>}
+      <hr />
+
+      {stories.isError && <p>Something went wrong ...</p>}
 
       {stories.isLoading ? (
-        <p>Loading...</p>
+        <p>Loading ...</p>
       ) : (
         <List list={stories.data} onRemoveItem={handleRemoveStory} />
       )}
-    </StyledContainer>
+    </div>
   );
 };
+
+const SearchForm = ({ searchTerm, onSearchInput, onSearchSubmit }) => (
+  <form onSubmit={onSearchSubmit}>
+    <InputWithLabel
+      id="search"
+      value={searchTerm}
+      isFocused
+      onInputChange={onSearchInput}
+    >
+      <strong>Search:</strong>
+    </InputWithLabel>
+
+    <button type="submit" disabled={!searchTerm}>
+      Submit
+    </button>
+  </form>
+);
 
 const InputWithLabel = ({
   id,
@@ -213,16 +146,16 @@ const InputWithLabel = ({
   const inputRef = React.useRef();
 
   React.useEffect(() => {
-    if (isFocused && inputRef.current) {
+    if (isFocused) {
       inputRef.current.focus();
     }
   }, [isFocused]);
 
   return (
     <>
-      <StyledLabel htmlFor={id}>{children}</StyledLabel>
+      <label htmlFor={id}>{children}</label>
       &nbsp;
-      <StyledInput
+      <input
         ref={inputRef}
         id={id}
         type={type}
@@ -233,46 +166,27 @@ const InputWithLabel = ({
   );
 };
 
-const List = React.memo(({ list, onRemoveItem }) =>
+const List = ({ list, onRemoveItem }) =>
   list.map((item) => (
     <Item key={item.objectID} item={item} onRemoveItem={onRemoveItem} />
-  ))
-);
+  ));
 
-const Item = React.memo(
-  ({ item, onRemoveItem }) =>
-    console.log("List") || (
-      <StyledItem>
-        <StyledColumn width="40%">
-          <a href={item.url}>{item.title}</a>
-        </StyledColumn>
-        <StyledColumn width="40%">{item.author}</StyledColumn>
-        <StyledColumn width="40%">{item.num_comments}</StyledColumn>
-        <StyledColumn width="40%">{item.points}</StyledColumn>
-        <StyledColumn width="40%">
-          <StyledButtonSmall type="button" onClick={() => onRemoveItem(item)}>
-            <Check height="18px" width="18px" />
-          </StyledButtonSmall>
-        </StyledColumn>
-      </StyledItem>
-    )
-);
-
-const SearchForm = ({ searchTerm, onSearchInput, onSearchSubmit }) => (
-  <StyledSearchForm onSubmit={onSearchSubmit}>
-    <InputWithLabel
-      id="search"
-      value={searchTerm}
-      isFocused
-      onInputChange={onSearchInput}
-    >
-      <strong>Search:</strong>
-    </InputWithLabel>
-
-    <StyledButtonLarge type="submit" disabled={!searchTerm}>
-      Submit
-    </StyledButtonLarge>
-  </StyledSearchForm>
+const Item = ({ item, onRemoveItem }) => (
+  <div>
+    <span>
+      <a href={item.url}>{item.title}</a>
+    </span>
+    <span>{item.author}</span>
+    <span>{item.num_comments}</span>
+    <span>{item.points}</span>
+    <span>
+      <button type="button" onClick={() => onRemoveItem(item)}>
+        Dismiss
+      </button>
+    </span>
+  </div>
 );
 
 export default App;
+
+export { storiesReducer, SearchForm, InputWithLabel, List, Item };
