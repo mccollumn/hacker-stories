@@ -5,6 +5,8 @@ import List from "./List";
 
 const API_ENDPOINT = "https://hn.algolia.com/api/v1/search?query=";
 
+const getUrl = (searchTerm) => `${API_ENDPOINT}${searchTerm}`;
+
 const useSemiPersistentState = (key, initialState) => {
   const [value, setValue] = React.useState(
     localStorage.getItem(key) || initialState
@@ -53,7 +55,7 @@ const storiesReducer = (state, action) => {
 const App = () => {
   const [searchTerm, setSearchTerm] = useSemiPersistentState("search", "React");
 
-  const [url, setUrl] = React.useState(`${API_ENDPOINT}${searchTerm}`);
+  const [urls, setUrls] = React.useState([getUrl(searchTerm)]);
 
   const [stories, dispatchStories] = React.useReducer(storiesReducer, {
     data: [],
@@ -65,7 +67,7 @@ const App = () => {
     dispatchStories({ type: "STORIES_FETCH_INIT" });
 
     try {
-      const result = await axios.get(url);
+      const result = await axios.get(urls[urls.length - 1]);
 
       dispatchStories({
         type: "STORIES_FETCH_SUCCESS",
@@ -74,7 +76,7 @@ const App = () => {
     } catch {
       dispatchStories({ type: "STORIES_FETCH_FAILURE" });
     }
-  }, [url]);
+  }, [urls]);
 
   React.useEffect(() => {
     handleFetchStories();
@@ -91,10 +93,28 @@ const App = () => {
     setSearchTerm(event.target.value);
   };
 
-  const handleSearchSubmit = (event) => {
-    setUrl(`${API_ENDPOINT}${searchTerm}`);
+  const handleSearch = (searchTerm) => {
+    setUrls(urls.concat(getUrl(searchTerm)));
+  };
 
+  const handleSearchSubmit = (event) => {
+    handleSearch(searchTerm);
     event.preventDefault();
+  };
+
+  const getLastSearches = (urls) => {
+    urls = [...new Set(urls)];
+    return urls
+      .slice(-6)
+      .slice(0, -1)
+      .map((url) => url.replace(API_ENDPOINT, ""));
+  };
+
+  const lastFiveSearchTerms = getLastSearches(urls);
+
+  const handleLastSearch = (term) => {
+    setSearchTerm(term);
+    handleSearch(term);
   };
 
   return (
@@ -105,6 +125,11 @@ const App = () => {
         searchTerm={searchTerm}
         onSearchInput={handleSearchInput}
         onSearchSubmit={handleSearchSubmit}
+      />
+
+      <LastSearches
+        lastSearches={lastFiveSearchTerms}
+        onLastSearch={handleLastSearch}
       />
 
       <hr />
@@ -119,5 +144,15 @@ const App = () => {
     </div>
   );
 };
+
+const LastSearches = ({ lastSearches, onLastSearch }) => (
+  <>
+    {lastSearches.map((term, index) => (
+      <button key={term + index} onClick={() => onLastSearch(term)}>
+        {term}
+      </button>
+    ))}
+  </>
+);
 
 export default App;
